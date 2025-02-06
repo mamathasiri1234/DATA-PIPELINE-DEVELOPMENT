@@ -1,0 +1,122 @@
+# Import required libraries
+import pandas as pd
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sqlalchemy import create_engine
+
+# Step 1: Extract Data
+def extract_data(file_path):
+    """
+    Extracts data from a CSV file.
+    """
+    try:
+        data = pd.read_csv(file_path)
+        print("Data extraction successful.")
+        return data
+    except Exception as e:
+        print(f"Error during data extraction: {e}")
+        raise
+
+# Step 2: Preprocess Data
+def preprocess_data(data):
+    """
+    Preprocesses the data by handling missing values and removing duplicates.
+    """
+    try:
+        # Handle missing values
+        data = data.dropna()  # Drop rows with missing values
+        # Remove duplicates
+        data = data.drop_duplicates()
+        print("Data preprocessing successful.")
+        return data
+    except Exception as e:
+        print(f"Error during data preprocessing: {e}")
+        raise
+
+# Step 3: Transform Data
+def transform_data(data):
+    """
+    Transforms the data by encoding categorical variables and scaling numerical features.
+    """
+    try:
+        # Define numerical and categorical columns
+        numerical_cols = data.select_dtypes(include=['float64', 'int64']).columns
+        categorical_cols = data.select_dtypes(include=['object']).columns
+
+        # Create a preprocessing pipeline
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', StandardScaler(), numerical_cols),
+                ('cat', OneHotEncoder(), categorical_cols)
+            ])
+
+        # Apply transformations
+        transformed_data = preprocessor.fit_transform(data)
+        print("Data transformation successful.")
+        return transformed_data
+    except Exception as e:
+        print(f"Error during data transformation: {e}")
+        raise
+
+# Step 4: Load Data
+def load_data(data, output_file_path, database_url=None, table_name=None):
+    """
+    Loads the processed data into a CSV file or database.
+    """
+    try:
+        # Save to CSV file
+        data.to_csv(output_file_path, index=False)
+        print(f"Data saved to {output_file_path}.")
+
+        # Optional: Load into a database
+        if database_url and table_name:
+            engine = create_engine(database_url)
+            data.to_sql(table_name, engine, if_exists='replace', index=False)
+            print(f"Data loaded into {table_name} table in the database.")
+    except Exception as e:
+        print(f"Error during data loading: {e}")
+        raise
+
+# Main Pipeline Function
+def run_pipeline(input_file_path, output_file_path, database_url=None, table_name=None):
+    """
+    Runs the entire ETL pipeline.
+    """
+    try:
+        # Step 1: Extract Data
+        raw_data = extract_data(input_file_path)
+
+        # Step 2: Preprocess Data
+        preprocessed_data = preprocess_data(raw_data)
+
+        # Step 3: Transform Data
+        transformed_data = transform_data(preprocessed_data)
+
+        # Convert transformed data back to DataFrame
+        transformed_df = pd.DataFrame(transformed_data)
+
+        # Step 4: Load Data
+        load_data(transformed_df, output_file_path, database_url, table_name)
+
+        print("ETL pipeline executed successfully!")
+    except Exception as e:
+        print(f"ETL pipeline failed: {e}")
+
+# Example Usage
+if _name_ == "_main_":
+    # Input file path
+    input_file_path = "raw_data.csv"
+
+    # Output file path
+    output_file_path = "processed_data.csv"
+
+    # Database connection URL (optional)
+    database_url = "sqlite:///data_pipeline.db"  # SQLite example
+    # For PostgreSQL: "postgresql://user:password@localhost/dbname"
+
+    # Table name to store the data (optional)
+    table_name = "processed_data"
+
+    # Run the pipeline
+    run_pipeline(input_file_path, output_file_path, database_url, table_name)
